@@ -1,0 +1,1426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="The YouTube videos Hacker News commenters kept recommending to each other, 2007 to 2026.">
+<script>window.srDownload = function (name, text) { var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); };</script>
+<title>HN Screening Room</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: a programme of screenings. Sticky top bar, left nav rail, card grid; the watch page
+   pairs the screen with its HN "programme notes" (who recommended it, when, and what they said). */
+:root {
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --surface-2: #e9ebef;
+  --ink: #15171c;
+  --muted: #565d69;
+  --faint: #868d99;
+  --line: #dde0e6;
+  --accent: #e0560e;
+  --accent-ink: #b14206;
+  --accent-soft: #fce8da;
+  --on-accent: #ffffff;
+  --good: #1d7a4c;
+  --scrim: rgba(18, 20, 25, .48);
+  --tile-bg-s: 34%;
+  --tile-bg-l: 86%;
+  --tile-fg-s: 48%;
+  --tile-fg-l: 22%;
+  --shadow: 0 1px 2px rgba(20, 24, 33, .06), 0 8px 24px rgba(20, 24, 33, .08);
+
+  --f-display: "Big Shoulders Display", "Oswald", "Arial Narrow", Impact, sans-serif;
+  --f-body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --t-xs: .75rem;
+  --t-sm: .8125rem;
+  --t-md: .9375rem;
+  --t-lg: 1.125rem;
+  --t-xl: 1.5rem;
+  --t-2xl: 2.25rem;
+
+  --radius: 10px;
+  --rail: 232px;
+  --top: 60px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101216; --surface: #181b20; --surface-2: #22262d; --ink: #eceef2; --muted: #a4aab5;
+    --faint: #737a86; --line: #2b2f37; --accent: #ff7631; --accent-ink: #ff9a63; --accent-soft: #3a2418;
+    --on-accent: #1a0d05; --good: #4cc48a; --scrim: rgba(0, 0, 0, .62);
+    --tile-bg-s: 24%; --tile-bg-l: 21%; --tile-fg-s: 55%; --tile-fg-l: 84%;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px rgba(0, 0, 0, .45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101216; --surface: #181b20; --surface-2: #22262d; --ink: #eceef2; --muted: #a4aab5;
+  --faint: #737a86; --line: #2b2f37; --accent: #ff7631; --accent-ink: #ff9a63; --accent-soft: #3a2418;
+  --on-accent: #1a0d05; --good: #4cc48a; --scrim: rgba(0, 0, 0, .62);
+  --tile-bg-s: 24%; --tile-bg-l: 21%; --tile-fg-s: 55%; --tile-fg-l: 84%;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px rgba(0, 0, 0, .45);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 var(--t-md)/1.5 var(--f-body);
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 40; background: var(--surface);
+}
+img { max-width: 100%; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.icon { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- top bar ---------- */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30;
+  height: var(--top); display: flex; align-items: center; gap: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.icon-btn {
+  display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  border: 0; background: transparent; cursor: pointer; color: var(--ink); flex: none;
+}
+.icon-btn:hover { background: var(--surface-2); }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; flex: none; min-width: 0; }
+.brand svg { width: 30px; height: 30px; flex: none; }
+.brand-name { font: 800 1.45rem/1 var(--f-display); letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; }
+.brand-name .hn { color: var(--accent); }
+.search { flex: 1; display: flex; justify-content: center; min-width: 0; }
+.search form { position: relative; width: 100%; max-width: 560px; }
+.search input {
+  width: 100%; height: 40px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg);
+  padding: 0 72px 0 42px; outline: none;
+}
+.search input:focus { border-color: var(--accent); background: var(--surface); }
+.search .icon { position: absolute; left: 14px; top: 10px; color: var(--faint); }
+.search kbd { position: absolute; right: 12px; top: 9px; }
+kbd {
+  font: 500 var(--t-xs)/1 var(--f-mono); padding: 4px 6px; border-radius: 5px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+}
+.menu-btn { display: none; }
+
+/* ---------- shell ---------- */
+.shell { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); min-height: calc(100vh - var(--top)); }
+.rail {
+  position: sticky; top: calc(var(--top) + env(safe-area-inset-top, 0px)); align-self: start;
+  height: calc(100vh - var(--top) - env(safe-area-inset-top, 0px)); overflow-y: auto;
+  padding: 12px 10px 24px max(10px, env(safe-area-inset-left, 0px)); border-right: 1px solid var(--line);
+  background: var(--bg); overscroll-behavior: contain;
+}
+.rail h4 {
+  margin: 18px 12px 6px; font: 600 var(--t-xs)/1 var(--f-body); letter-spacing: .08em;
+  text-transform: uppercase; color: var(--faint);
+}
+.nav a {
+  display: flex; align-items: center; gap: 14px; padding: 8px 12px; border-radius: 8px;
+  text-decoration: none; color: var(--ink); font-size: var(--t-md);
+}
+.nav a:hover { background: var(--surface-2); }
+.nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.nav a .n { margin-left: auto; font: 400 var(--t-xs)/1 var(--f-mono); color: var(--faint); }
+.nav a.sub { padding: 6px 12px 6px 46px; font-size: var(--t-sm); color: var(--muted); }
+.nav a.sub .dot { width: 8px; height: 8px; border-radius: 2px; flex: none; margin-left: -22px; margin-right: 6px; background: hsl(var(--h) 55% 55%); }
+.rail-foot { margin: 22px 12px 0; font-size: var(--t-xs); color: var(--faint); line-height: 1.5; }
+.rail-foot a { color: var(--muted); }
+.scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 34; }
+
+main {
+  min-width: 0; padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (min-width: 760px) { main { padding-left: 28px; padding-right: max(28px, env(safe-area-inset-right, 0px)); } }
+
+@media (max-width: 999px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .menu-btn { display: inline-grid; }
+  .rail {
+    position: fixed; z-index: 35; top: 0; left: 0; bottom: 0; height: auto; width: min(300px, 86vw);
+    padding-top: calc(12px + env(safe-area-inset-top, 0px)); background: var(--surface); box-shadow: var(--shadow);
+    transform: translateX(-104%); transition: transform .22s ease;
+  }
+  body.drawer .rail { transform: none; }
+}
+@media (max-width: 640px) {
+  .brand-name { display: none; }
+  .search kbd { display: none; }
+  .search input { padding-right: 14px; }
+  .topbar { gap: 6px; }
+}
+
+/* ---------- view header & controls ---------- */
+.view-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; margin-bottom: 16px; }
+.view-head > div { min-width: 0; flex: 1 1 320px; }
+.eyebrow { font: 500 var(--t-xs)/1.2 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent-ink); margin: 0 0 6px; }
+h1.v-title { margin: 0; font: 800 var(--t-2xl)/1 var(--f-display); letter-spacing: .01em; text-transform: uppercase; text-wrap: balance; }
+.v-sub { margin: 8px 0 0; color: var(--muted); max-width: 68ch; text-wrap: pretty; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 18px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer;
+  text-decoration: none; font-size: var(--t-sm); font-weight: 600; white-space: nowrap;
+}
+.btn:hover { background: var(--surface-2); }
+.btn .icon { width: 18px; height: 18px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn[aria-pressed="true"] { background: var(--accent-soft); border-color: transparent; color: var(--accent-ink); }
+.btn.danger { color: #c4321c; }
+:root[data-theme="dark"] .btn.danger { color: #ff8a73; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 14px; scrollbar-width: thin; }
+.chips.wrap { flex-wrap: wrap; overflow: visible; }
+.chip {
+  flex: none; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); font-size: var(--t-sm); cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.chip:hover { background: var(--surface-2); }
+.chip[aria-pressed="true"], .chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.chip .n { font: 400 var(--t-xs)/1 var(--f-mono); opacity: .7; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-bottom: 18px; }
+.filters label { display: flex; align-items: center; gap: 8px; font-size: var(--t-sm); color: var(--muted); }
+select {
+  height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface);
+  padding: 0 28px 0 10px; font-size: var(--t-sm); color: var(--ink);
+}
+.count { font: 400 var(--t-sm)/1 var(--f-mono); color: var(--faint); margin-left: auto; }
+
+/* ---------- cards ---------- */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 248px), 1fr)); gap: 26px 18px; }
+.card { position: relative; min-width: 0; }
+.card-link { display: block; text-decoration: none; color: inherit; border-radius: var(--radius); }
+.thumb {
+  position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: var(--radius); overflow: hidden;
+  background: hsl(var(--h) var(--tile-bg-s) var(--tile-bg-l));
+}
+.thumb img.ti { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile {
+  position: absolute; inset: 0; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between;
+  color: hsl(var(--h) var(--tile-fg-s) var(--tile-fg-l));
+}
+.tile .t-kind { font: 500 .6875rem/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.card .tile .t-kind { visibility: hidden; }
+.tile .t-topic {
+  font: 800 1.55rem/.95 var(--f-display); text-transform: uppercase; letter-spacing: .01em;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-wrap: balance;
+  hyphens: auto; overflow-wrap: anywhere;
+}
+.tile .t-cat { font-size: .6875rem; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge {
+  position: absolute; right: 8px; bottom: 8px; padding: 3px 6px; border-radius: 5px;
+  background: rgba(10, 11, 14, .78); color: #fff; font: 500 .6875rem/1 var(--f-mono); letter-spacing: .03em; text-transform: uppercase;
+}
+.badge.left { right: auto; left: 8px; background: var(--accent); color: var(--on-accent); }
+.card-act {
+  position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 8px; border: 0;
+  display: grid; place-items: center; cursor: pointer; background: rgba(10, 11, 14, .72); color: #fff;
+  opacity: 0; transition: opacity .15s;
+}
+.card-act .icon { width: 18px; height: 18px; }
+.card:hover .card-act, .card:focus-within .card-act, .card-act.on { opacity: 1; }
+.card-act.on { background: var(--accent); color: var(--on-accent); }
+@media (hover: none) { .card-act { opacity: 1; } }
+.card-body { padding: 10px 2px 0; display: grid; gap: 3px; }
+.card-title {
+  margin: 0; font-size: var(--t-md); font-weight: 600; line-height: 1.35; text-wrap: pretty;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.card-ch { font-size: var(--t-sm); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-meta { font: 400 var(--t-xs)/1.4 var(--f-mono); color: var(--faint); font-variant-numeric: tabular-nums; }
+.card-meta b { color: var(--accent-ink); font-weight: 500; }
+.card.kfocus .card-link { outline: 2px solid var(--accent); outline-offset: 4px; }
+.card-why { font-size: var(--t-xs); color: var(--muted); margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.more { display: flex; justify-content: center; padding: 28px 0 8px; }
+.empty {
+  padding: 40px 20px; border: 1px dashed var(--line); border-radius: var(--radius); text-align: center; color: var(--muted);
+  max-width: 560px; margin: 20px auto;
+}
+.empty h3 { margin: 0 0 6px; color: var(--ink); font-size: var(--t-lg); }
+.skel .thumb { background: var(--surface-2); }
+.skel .bar { height: 12px; border-radius: 6px; background: var(--surface-2); margin-top: 10px; }
+.skel .bar.s { width: 60%; }
+@media (prefers-reduced-motion: no-preference) {
+  .skel .thumb, .skel .bar { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+}
+.group-h { margin: 26px 0 12px; font: 600 var(--t-sm)/1 var(--f-body); color: var(--muted); letter-spacing: .02em; }
+.group-h:first-of-type { margin-top: 4px; }
+
+/* ---------- watch ---------- */
+.watch { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; max-width: 1640px; }
+@media (max-width: 1180px) { .watch { grid-template-columns: minmax(0, 1fr); } }
+.player { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 14px; overflow: hidden; background: #000; }
+.player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.poster { position: absolute; inset: 0; display: block; color: inherit; text-decoration: none; cursor: pointer; background: hsl(var(--h) var(--tile-bg-s) var(--tile-bg-l)); }
+.poster .tile { padding: clamp(16px, 4vw, 36px); }
+.poster .tile { justify-content: flex-start; gap: 8px; }
+.poster .tile .t-topic { margin-top: auto; font-size: clamp(1.6rem, 4.6vw, 3.6rem); -webkit-line-clamp: 2; }
+.poster .tile .t-kind, .poster .tile .t-cat { font-size: var(--t-sm); }
+.poster img.ti { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.play {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 76px; height: 54px; border-radius: 14px;
+  display: grid; place-items: center; background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 30px rgba(0, 0, 0, .35);
+  transition: transform .15s;
+}
+.play svg { width: 30px; height: 30px; }
+.poster:hover .play { transform: translate(-50%, -50%) scale(1.06); }
+@media (max-width: 640px) { .poster .play-label { display: none; } .play { width: 64px; height: 46px; } }
+.poster .play-label {
+  position: absolute; left: 50%; top: calc(50% + 40px); transform: translateX(-50%); padding: 4px 10px; border-radius: 6px;
+  background: rgba(10, 11, 14, .78); color: #fff; font: 500 var(--t-xs)/1.3 var(--f-mono); white-space: nowrap;
+}
+.note {
+  margin-top: 10px; padding: 10px 14px; border-radius: 8px; background: var(--surface-2); color: var(--muted); font-size: var(--t-sm);
+}
+.w-title { margin: 16px 0 6px; font-size: clamp(1.25rem, 2.4vw, 1.6rem); line-height: 1.25; font-weight: 700; text-wrap: balance; }
+.w-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--muted); font-size: var(--t-sm); }
+.w-line .ch { font-weight: 600; color: var(--ink); font-size: var(--t-md); }
+.tag {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 6px; background: var(--surface-2);
+  font: 500 .6875rem/1 var(--f-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); text-decoration: none;
+}
+a.tag:hover { color: var(--ink); }
+.w-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 18px; }
+.notes {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 14px;
+}
+.stats { display: flex; flex-wrap: wrap; gap: 8px 28px; }
+.stat { display: grid; gap: 2px; }
+.stat b { font: 500 1.6rem/1 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.stat span { font-size: var(--t-xs); color: var(--muted); }
+.stance-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface-2); }
+.stance-bar i { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--t-xs); color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.st-strong_rec { background: var(--accent); }
+.st-rec { background: color-mix(in srgb, var(--accent) 55%, var(--surface)); }
+.st-reference { background: var(--faint); }
+.st-joke { background: color-mix(in srgb, var(--faint) 50%, var(--surface)); }
+.st-critical { background: #c4321c; }
+.summary { margin: 0; max-width: 72ch; text-wrap: pretty; }
+.why { margin: 0; max-width: 72ch; color: var(--muted); }
+.why b { color: var(--ink); font-weight: 600; }
+.pull {
+  margin: 0; padding: 2px 0 2px 16px; border-left: 3px solid var(--accent); max-width: 70ch;
+  font-size: var(--t-lg); font-style: italic; line-height: 1.45; text-wrap: pretty;
+}
+.pull cite { display: block; margin-top: 4px; font: normal 400 var(--t-xs)/1.4 var(--f-mono); color: var(--faint); }
+.pull cite a { color: var(--muted); }
+.tags-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.cm-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 28px 0 12px; }
+.cm-head h2 { margin: 0; font: 800 1.5rem/1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; }
+.cm-list { display: grid; gap: 12px; }
+.cm { padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); min-width: 0; }
+.cm-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--t-sm); }
+.cm-top .au { font-weight: 600; }
+.cm-top .mo { font-family: var(--f-mono); font-size: var(--t-xs); color: var(--faint); }
+.cm-top a.hn { margin-left: auto; font-size: var(--t-xs); color: var(--muted); text-decoration: none; display: inline-flex; gap: 4px; align-items: center; }
+.cm-top a.hn:hover { color: var(--accent-ink); }
+.cm-top a.hn .icon { width: 14px; height: 14px; }
+.st {
+  display: inline-flex; align-items: center; gap: 5px; font: 500 .6875rem/1 var(--f-mono); letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted);
+}
+.st i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.cm-story { font-size: var(--t-xs); color: var(--faint); margin-top: 3px; overflow-wrap: anywhere; }
+.cm-text { margin-top: 8px; font-size: var(--t-md); line-height: 1.55; overflow-wrap: anywhere; white-space: pre-line; }
+.cm-text.clamp { display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
+.cm-text mark { background: var(--accent-soft); color: inherit; padding: 0 2px; border-radius: 3px; }
+.tok {
+  display: inline-block; padding: 0 5px; border-radius: 4px; font: 500 .6875rem/1.6 var(--f-mono);
+  background: var(--surface-2); color: var(--muted); vertical-align: 1px;
+}
+.tok.v { background: var(--accent-soft); color: var(--accent-ink); }
+.linkish { border: 0; background: none; padding: 0; color: var(--accent-ink); cursor: pointer; font-size: var(--t-sm); font-weight: 600; margin-top: 6px; }
+
+.side h3 { margin: 4px 0 12px; font: 800 1.25rem/1 var(--f-display); text-transform: uppercase; letter-spacing: .03em; }
+.side h3 + p { margin: -6px 0 12px; font-size: var(--t-xs); color: var(--faint); }
+.side section + section { margin-top: 26px; }
+.row { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 10px; text-decoration: none; color: inherit; padding: 4px; border-radius: 10px; }
+.row:hover { background: var(--surface-2); }
+.row .thumb { border-radius: 8px; }
+.row .tile { padding: 8px 9px; }
+.row .tile .t-topic { font-size: 1rem; -webkit-line-clamp: 3; }
+.row .tile .t-kind, .row .tile .t-cat { display: none; }
+.row .card-title { font-size: var(--t-sm); }
+.row .card-ch, .row .card-meta { font-size: var(--t-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side .list { display: grid; gap: 6px; }
+@media (max-width: 420px) { .row { grid-template-columns: 132px minmax(0, 1fr); } }
+
+/* ---------- categories index ---------- */
+.areas { display: grid; gap: 34px; margin-top: 30px; }
+.area-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid hsl(var(--h) 55% 55%); }
+.area-h a { font: 800 1.6rem/1 var(--f-display); text-transform: uppercase; text-decoration: none; letter-spacing: .02em; }
+.area-h a:hover { color: var(--accent-ink); }
+.area-h .n { font: 400 var(--t-sm)/1 var(--f-mono); color: var(--faint); }
+.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+.cat {
+  display: grid; gap: 4px; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line);
+  text-decoration: none; color: inherit; min-width: 0;
+}
+.cat:hover { border-color: hsl(var(--h) 55% 55%); }
+.cat b { font-weight: 600; display: flex; gap: 8px; align-items: baseline; }
+.cat b .n { margin-left: auto; font: 400 var(--t-xs)/1 var(--f-mono); color: var(--faint); }
+.cat span { font-size: var(--t-xs); color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ---------- playlists, prefs, about ---------- */
+.pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 248px), 1fr)); gap: 22px 18px; }
+.pl-new { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.input {
+  height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); padding: 0 12px; min-width: 0;
+}
+.input:focus { outline: none; border-color: var(--accent); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; max-width: 760px; }
+.panel + .panel { margin-top: 16px; }
+.panel h2 { margin: 0 0 4px; font-size: var(--t-lg); }
+.panel > p { margin: 0 0 14px; color: var(--muted); font-size: var(--t-sm); max-width: 68ch; }
+.opt { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+.opt:first-of-type { border-top: 0; }
+.opt input[type="checkbox"], .opt input[type="radio"] { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
+.opt div { min-width: 0; }
+.opt b { display: block; font-weight: 600; font-size: var(--t-md); }
+.opt span { font-size: var(--t-sm); color: var(--muted); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+textarea.input { height: 120px; width: 100%; padding: 10px 12px; font: 400 var(--t-xs)/1.5 var(--f-mono); resize: vertical; }
+.prose { max-width: 70ch; }
+.prose h2 { font: 800 1.5rem/1.1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; margin: 30px 0 8px; }
+.prose p, .prose li { color: var(--ink); text-wrap: pretty; }
+.prose ul { padding-left: 20px; }
+.prose code { font: 400 .85em var(--f-mono); background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+.keys { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; align-items: center; font-size: var(--t-sm); }
+.keys dt { display: flex; gap: 4px; }
+.keys dd { margin: 0; color: var(--muted); }
+.files { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
+.files td { padding: 8px 10px 8px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.files td:first-child { font-family: var(--f-mono); white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+
+footer.credit {
+  margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); font-size: var(--t-xs); color: var(--faint); max-width: 90ch;
+}
+footer.credit a { color: var(--muted); }
+
+/* ---------- overlays ---------- */
+.modal-wrap { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: var(--scrim); }
+.modal {
+  width: min(440px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--surface); border-radius: 14px;
+  box-shadow: var(--shadow); padding: 18px 20px; border: 1px solid var(--line);
+}
+.modal-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.modal-h h2 { margin: 0; font-size: var(--t-lg); }
+.toasts {
+  position: fixed; z-index: 60; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  display: grid; gap: 8px; width: max-content; max-width: calc(100vw - 32px);
+}
+.toast {
+  display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 10px; background: var(--ink); color: var(--bg);
+  font-size: var(--t-sm); box-shadow: var(--shadow);
+}
+.toast button { border: 0; background: none; color: var(--accent); font-weight: 700; cursor: pointer; padding: 0; }
+.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); margin-top: 10px; font-size: var(--t-sm); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="topbar">
+  <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu"><svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+  <a class="brand" href="#home" aria-label="HN Screening Room home">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 6h22a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H13l-6 5v-5H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" fill="var(--ink)"/><path d="M13 10.5v8l7-4z" fill="var(--accent)"/></svg>
+    <span class="brand-name"><span class="hn">HN</span> Screening<span class="long"> Room</span></span>
+  </a>
+  <div class="search">
+    <form id="searchForm" role="search">
+      <label class="sr" for="q">Search videos</label>
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="q" type="search" placeholder="Search talks, topics, channels" autocomplete="off" enterkeyhint="search">
+      <kbd>/</kbd>
+    </form>
+  </div>
+  <button class="icon-btn" id="keysBtn" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)"><svg class="icon" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg></button>
+</div>
+
+<div class="shell">
+  <nav class="rail" id="rail" aria-label="Main">
+    <div class="nav" id="nav"></div>
+  </nav>
+  <div class="scrim" id="scrim" hidden></div>
+  <main id="main" tabindex="-1">
+    <div class="view-head"><div><p class="eyebrow">Loading the programme</p><h1 class="v-title">For you</h1><p class="v-sub">Videos Hacker News commenters kept recommending to each other, 2007 to 2026.</p></div></div>
+    <div class="grid" aria-hidden="true" id="skel"></div>
+  </main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- tiny helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => Number(n).toLocaleString('en-US');
+const ICONS = {
+  home: '<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/>',
+  browse: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+  cats: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  like: '<path d="M7 10v11H3V10zM7 10l4-7c1.7 0 3 1.3 3 3v3h5.2a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 17.8 21H7"/>',
+  dislike: '<g transform="rotate(180 12 12)"><path d="M7 10v11H3V10zM7 10l4-7c1.7 0 3 1.3 3 3v3h5.2a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 17.8 21H7"/></g>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  check: '<path d="m5 12 5 5 9-10"/>',
+  history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 8v4l3 2"/>',
+  playlist: '<path d="M3 6h13M3 12h13M3 18h8"/><path d="m16 15 5 3-5 3z"/>',
+  prefs: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+  play: '<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>',
+  ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  shuffle: '<path d="M3 7h3c4 0 6 10 10 10h5M3 17h3c1.5 0 2.7-1.4 3.8-3.2M14.2 10.2C15.3 8.4 16.5 7 18 7h3M18 4l3 3-3 3M18 14l3 3-3 3"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  save: '<path d="M3 6h12M3 12h12M3 18h7"/><path d="M18 14v8M14 18h8"/>',
+};
+const ic = (name, extra = '') => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"${extra}>${ICONS[name]}</svg>`;
+
+/* ---------- storage (per-browser conveniences only) ---------- */
+const store = (() => {
+  const mem = {};
+  let ok = true;
+  try { localStorage.setItem('sr:probe', '1'); localStorage.removeItem('sr:probe'); } catch (e) { ok = false; }
+  return {
+    ok: () => ok,
+    get(k, d) {
+      if (!ok) return k in mem ? mem[k] : d;
+      try { const v = localStorage.getItem('sr:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; }
+    },
+    set(k, v) {
+      mem[k] = v;
+      if (!ok) return;
+      try { localStorage.setItem('sr:' + k, JSON.stringify(v)); } catch (e) { /* storage full or blocked */ }
+    },
+  };
+})();
+
+const S = {
+  likes: store.get('likes', {}),        // vid -> ts
+  dislikes: store.get('dislikes', {}),  // vid -> ts
+  later: store.get('later', []),        // [vid] newest first
+  history: store.get('history', []),    // [{v, t, p}] newest first; p = pressed play
+  playlists: store.get('playlists', []),// [{id, name, items:[vid], t}]
+  prefs: Object.assign({ thumb: 'mid', news: false, cited: false, theme: 'system' }, store.get('prefs', {})),
+};
+let sigVersion = 0;
+function save(k) { store.set(k, S[k]); if (k !== 'prefs' && k !== 'playlists') sigVersion++; }
+
+const initialTheme = document.documentElement.getAttribute('data-theme');
+function applyTheme() {
+  const t = S.prefs.theme;
+  if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  else if (initialTheme) document.documentElement.setAttribute('data-theme', initialTheme);
+  else document.documentElement.removeAttribute('data-theme');
+}
+applyTheme();
+
+/* ---------- environment: can this page show YouTube thumbnails and the embedded player? ---------- */
+const ENV = { thumbs: null, embed: true };
+document.addEventListener('securitypolicyviolation', e => {
+  const u = String(e.blockedURI || '');
+  if (/youtube|ytimg/.test(u)) {
+    if (/ytimg/.test(u)) ENV.thumbs = false;
+    if (/youtube/.test(u) && /frame/.test(e.violatedDirective || e.effectiveDirective || '')) { ENV.embed = false; onEmbedBlocked(); }
+  }
+});
+document.addEventListener('error', e => {
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && t.classList.contains('ti')) t.remove();
+}, true);
+document.addEventListener('load', e => {
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && t.classList.contains('ti') && t.naturalWidth && t.naturalWidth <= 120) t.remove();
+}, true);
+
+/* ---------- data ---------- */
+let D = null, V = [], VID = new Map(), GRAPH = null, EMB = null, NORMS = null;
+const shardCache = new Map();
+const CT_LABEL = { talk: 'Talks', lecture: 'Lectures', course: 'Courses', documentary: 'Documentaries', explainer: 'Explainers', interview: 'Interviews', podcast: 'Podcasts', tutorial: 'Tutorials', demo: 'Demos', news: 'News', commentary: 'Commentary', comedy: 'Comedy', music: 'Music', other: 'Other' };
+const LV_LABEL = { general: 'General audience', intro: 'Intro', intermediate: 'Intermediate', advanced: 'Advanced' };
+const AREA_SHORT = {
+  'software': 'Software', 'systems-security': 'Systems & security', 'ai-data': 'AI & data', 'math-theory': 'Math & theory',
+  'hardware': 'Hardware', 'computing-history-culture': 'Computing history', 'design-graphics-media': 'Design & media',
+  'business-economics': 'Business', 'politics-history-society': 'Politics & society', 'physics-space': 'Physics & space',
+  'life-sciences-health': 'Life sciences', 'earth-energy-environment': 'Earth & energy', 'engineering-making': 'Engineering',
+  'games': 'Games', 'arts-entertainment': 'Arts & comedy', 'ideas-education': 'Ideas & learning',
+};
+const STANCE_LABEL = { strong_rec: 'Strong rec', rec: 'Recommends', reference: 'Cites', joke: 'Joke', critical: 'Critical' };
+
+function hydrate(cat) {
+  D = cat;
+  const FI = Object.fromEntries(cat.fields.map((f, i) => [f, i]));
+  V = cat.videos.map((r, i) => {
+    const cats = r[FI.categories];
+    const v = {
+      i, vid: r[FI.vid], title: r[FI.title], channel: r[FI.channel], summary: r[FI.summary], why: r[FI.why_hn],
+      ct: cat.content_types[r[FI.content_type]], lv: cat.levels[r[FI.level]], sl: cat.shelf_lives[r[FI.shelf_life]],
+      topic: r[FI.primary_topic], tags: r[FI.tags] ? r[FI.tags].split('|') : [], cats,
+      area: cats.length ? cat.categories[cats[0]].area : 0,
+      quote: r[FI.quote], qid: r[FI.quote_comment_id], qy: r[FI.quote_year],
+      recs: r[FI.recommenders], months: r[FI.rec_months], strong: r[FI.strong_recs], mentions: r[FI.mentions],
+      fy: r[FI.first_year], ly: r[FI.last_year], score: r[FI.score], alts: r[FI.alt_vids],
+    };
+    v.hue = (cat.areas.length ? (v.area * 360 / cat.areas.length + 18) : 200) % 360;
+    v.q = Math.sqrt(Math.min(1, v.score / 20));
+    return v;
+  });
+  V.forEach(v => VID.set(v.vid, v));
+  D.catCount = new Array(cat.categories.length).fill(0);
+  D.areaCount = new Array(cat.areas.length).fill(0);
+  for (const v of V) {
+    if (!visible(v, true)) continue;
+    const seenA = new Set();
+    for (const c of v.cats) { D.catCount[c]++; seenA.add(cat.categories[c].area); }
+    seenA.forEach(a => D.areaCount[a]++);
+  }
+  for (const v of V) {
+    v.hay = {
+      title: v.title.toLowerCase(), channel: v.channel.toLowerCase(), topic: v.topic.toLowerCase(),
+      tags: v.tags.join(' ').toLowerCase(), text: (v.summary + ' ' + v.why).toLowerCase(),
+      cats: v.cats.map(c => cat.categories[c].name).join(' ').toLowerCase(),
+    };
+  }
+}
+
+async function loadGraph() {
+  if (!GRAPH) GRAPH = await (await fetch('data/graph.json')).json();
+  return GRAPH;
+}
+async function loadEmb() {
+  if (EMB) return EMB;
+  const bin = atob((await (await fetch('data/emb.txt')).text()).trim());
+  EMB = new Int8Array(bin.length);
+  for (let k = 0; k < bin.length; k++) EMB[k] = bin.charCodeAt(k) << 24 >> 24;
+  const d = D.dims, n = V.length;
+  NORMS = new Float32Array(n);
+  for (let i = 0; i < n; i++) { let s = 0; const o = i * d; for (let k = 0; k < d; k++) s += EMB[o + k] * EMB[o + k]; NORMS[i] = Math.sqrt(s) || 1; }
+  return EMB;
+}
+async function loadComments(i) {
+  const k = i % D.shards;
+  if (!shardCache.has(k)) shardCache.set(k, fetch(`data/c/${String(k).padStart(2, '0')}.json`).then(r => r.json()));
+  const shard = await shardCache.get(k);
+  return (shard[i] || []).map(c => ({ id: c[0], author: c[1], month: c[2], story: c[3], stance: D.stances[c[4]], why: c[5], quote: c[6], text: c[7] }));
+}
+
+/* ---------- visibility & signals ---------- */
+function visible(v, ignoreDislike) {
+  if (!S.prefs.news && v.sl === 'news') return false;
+  if (!S.prefs.cited && v.recs === 0) return false;
+  if (!ignoreDislike && S.dislikes[v.vid]) return false;
+  return true;
+}
+const seenSet = () => new Set(S.history.map(h => h.v));
+function addHistory(vid, pressed) {
+  const now = Date.now();
+  const prev = S.history.find(h => h.v === vid);
+  S.history = S.history.filter(h => h.v !== vid);
+  S.history.unshift({ v: vid, t: now, p: pressed || (prev ? prev.p : 0) ? 1 : 0 });
+  if (S.history.length > 600) S.history.length = 600;
+  save('history'); renderNav();
+}
+function signals() {
+  const w = new Map(), now = Date.now();
+  const add = (vid, x) => { const v = VID.get(vid); if (v) w.set(v.i, (w.get(v.i) || 0) + x); };
+  for (const vid in S.likes) add(vid, 3);
+  for (const vid in S.dislikes) add(vid, -2.5);
+  S.later.slice(0, 60).forEach(vid => add(vid, 1));
+  S.history.slice(0, 150).forEach(h => {
+    const decay = Math.pow(0.5, (now - h.t) / (45 * 864e5));
+    add(h.v, (h.p ? 1.6 : 0.7) * decay);
+  });
+  return [...w.entries()].map(([i, x]) => ({ i, w: x }));
+}
+
+/* ---------- random ---------- */
+let seed = (Date.now() / 36e5) | 0;
+function rng(s) { return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+/* ---------- feeds ---------- */
+let feedCache = { key: '', items: [] };
+async function forYou(area) {
+  const key = `${sigVersion}|${seed}|${area}|${S.prefs.news}|${S.prefs.cited}`;
+  if (feedCache.key === key) return feedCache;
+  const sig = signals();
+  const pos = sig.filter(s => s.w > 0.2).sort((a, b) => b.w - a.w);
+  const seen = seenSet();
+  for (const vid in S.likes) seen.add(vid);
+  const pool = V.filter(v => visible(v) && !seen.has(v.vid) && (area < 0 || v.cats.some(c => D.categories[c].area === area)));
+  const rand = rng(seed);
+  let out, tuned = pos.length >= 2;
+  if (!tuned) {
+    // Cold start: score-weighted sample of well-recommended videos, spread across areas and channels.
+    const cand = pool.filter(v => v.recs >= 2).map(v => ({ v, k: Math.pow(rand(), 1 / Math.pow(v.score + 1, 1.25)) }));
+    cand.sort((a, b) => b.k - a.k);
+    out = diversify(cand.map(c => c.v), null);
+  } else {
+    const E = await loadEmb(), d = D.dims;
+    const anchors = pos.slice(0, 12), negs = sig.filter(s => s.w < 0).slice(0, 25);
+    const cen = new Float32Array(d);
+    for (const a of anchors) { const o = a.i * d, s = a.w / NORMS[a.i]; for (let k = 0; k < d; k++) cen[k] += s * E[o + k]; }
+    let cn = 0; for (let k = 0; k < d; k++) cn += cen[k] * cen[k]; cn = Math.sqrt(cn) || 1;
+    const wmax = anchors[0].w;
+    const scored = pool.map(v => {
+      const o = v.i * d, nv = NORMS[v.i];
+      let best = 0, c = 0;
+      for (let k = 0; k < d; k++) c += cen[k] * E[o + k];
+      for (const a of anchors) {
+        const oa = a.i * d; let s = 0;
+        for (let k = 0; k < d; k++) s += E[oa + k] * E[o + k];
+        s = s / (NORMS[a.i] * nv) * (0.75 + 0.25 * a.w / wmax);
+        if (s > best) best = s;
+      }
+      let neg = 0;
+      for (const n of negs) {
+        const on = n.i * d; let s = 0;
+        for (let k = 0; k < d; k++) s += E[on + k] * E[o + k];
+        s /= NORMS[n.i] * nv; if (s > neg) neg = s;
+      }
+      const x = 0.55 * best + 0.25 * (c / (cn * nv)) + 0.2 * v.q - 0.45 * Math.max(0, neg - 0.55) + 0.05 * rand();
+      return { v, x };
+    });
+    scored.sort((a, b) => b.x - a.x);
+    // Keep a little exploration: every 6th slot comes from a score-weighted random draw.
+    const top = scored.slice(0, 900).map(s => s.v);
+    const explore = pool.filter(v => v.recs >= 3).map(v => ({ v, k: Math.pow(rand(), 1 / (v.score + 1)) })).sort((a, b) => b.k - a.k).map(c => c.v);
+    const mixed = [], used = new Set();
+    let ti = 0, ei = 0;
+    while (mixed.length < top.length && (ti < top.length || ei < explore.length)) {
+      const fromExplore = (mixed.length % 6 === 5) && ei < explore.length;
+      const v = fromExplore ? explore[ei++] : top[ti++];
+      if (v && !used.has(v.vid)) { used.add(v.vid); mixed.push(v); }
+      if (ti >= top.length && ei >= explore.length) break;
+    }
+    out = diversify(mixed, E);
+  }
+  feedCache = { key, items: out.map(v => v.i), tuned, nPos: pos.length };
+  return feedCache;
+}
+function diversify(list, E) {
+  const out = [], rest = list.slice(), recentCh = [], recentArea = [];
+  while (rest.length) {
+    let pick = 0;
+    for (let j = 0; j < Math.min(rest.length, 30); j++) {
+      const v = rest[j];
+      if (recentCh.includes(v.channel)) continue;
+      if (recentArea.filter(a => a === v.area).length >= 3) continue;
+      pick = j; break;
+    }
+    const v = rest.splice(pick, 1)[0];
+    out.push(v);
+    recentCh.push(v.channel); if (recentCh.length > 6) recentCh.shift();
+    recentArea.push(v.area); if (recentArea.length > 8) recentArea.shift();
+  }
+  return out;
+}
+
+const SORTS = {
+  score: { label: 'Most recommended', fn: (a, b) => b.score - a.score || b.recs - a.recs },
+  people: { label: 'Most people', fn: (a, b) => b.recs - a.recs || b.score - a.score },
+  strong: { label: 'Most strong recs', fn: (a, b) => b.strong - a.strong || b.score - a.score },
+  recent: { label: 'Recommended lately', fn: (a, b) => b.ly - a.ly || b.score - a.score },
+  classic: { label: 'Longest-running favourites', fn: (a, b) => (b.ly - b.fy) - (a.ly - a.fy) || b.score - a.score },
+};
+const ERAS = { '': 'Any year', '2007': '2007 – 2011', '2012': '2012 – 2016', '2017': '2017 – 2021', '2022': '2022 – 2026' };
+const F = { types: new Set(), lv: '', era: '', sort: 'score' };
+function applyFilters(list) {
+  let out = list.filter(v => visible(v)
+    && (!F.types.size || F.types.has(v.ct))
+    && (!F.lv || v.lv === F.lv)
+    && (!F.era || (v.fy >= +F.era && v.fy <= +F.era + 4)));
+  return out.sort(SORTS[F.sort].fn);
+}
+
+/* ---------- search ---------- */
+function search(q) {
+  const toks = q.toLowerCase().replace(/[^\p{L}\p{N}+#.\s-]/gu, ' ').split(/\s+/).filter(Boolean);
+  if (!toks.length) return { items: [], cats: [] };
+  const res = [];
+  const words = toks.map(t => new RegExp('\\b' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b'));
+  for (const v of V) {
+    if (!visible(v)) continue;
+    const h = v.hay; let s = 0, okAll = true;
+    for (let ti = 0; ti < toks.length; ti++) {
+      const t = toks[ti];
+      let m = 0;
+      if (h.title.includes(t)) m += 6 + (words[ti].test(h.title) ? 3 : 0);
+      if (h.topic.includes(t)) m += 4;
+      if (h.channel.includes(t)) m += 3.5;
+      if (h.tags.includes(t)) m += 3;
+      if (h.cats.includes(t)) m += 2;
+      if (h.text.includes(t)) m += 1.2;
+      if (!m) { okAll = false; break; }
+      s += m;
+    }
+    if (okAll) res.push({ v, s: s + 2.2 * Math.log1p(v.score) });
+  }
+  res.sort((a, b) => b.s - a.s);
+  const cats = D.categories.map((c, ci) => ({ c, ci })).filter(({ c }) => toks.every(t => (c.name + ' ' + c.desc).toLowerCase().includes(t))).slice(0, 6);
+  return { items: res.map(r => r.v.i), cats };
+}
+
+/* ---------- rendering: cards ---------- */
+function thumbUrl(v) { return `https://i.ytimg.com/vi/${v.vid}/${S.prefs.thumb === 'creator' ? 'hqdefault' : 'hq2'}.jpg`; }
+function tileHTML(v) {
+  const cat = v.cats.length ? D.categories[v.cats[0]].name : '';
+  return `<div class="tile" lang="en" aria-hidden="true"><span class="t-kind">${esc(v.ct)}</span><span class="t-topic">${esc(v.topic)}</span><span class="t-cat">${esc(cat)}</span></div>`;
+}
+function metaHTML(v) {
+  return v.recs ? `<b>${v.recs}</b> recommender${v.recs === 1 ? '' : 's'} · ${v.fy === v.ly ? v.fy : v.fy + '–' + v.ly}`
+    : `cited ${v.mentions}× · ${v.fy === v.ly ? v.fy : v.fy + '–' + v.ly}`;
+}
+function cardHTML(i, mode) {
+  const v = V[i], inLater = S.later.includes(v.vid);
+  const act = mode && mode.startsWith('pl:')
+    ? `<button class="card-act" data-act="plremove" data-pl="${mode.slice(3)}" aria-label="Remove from playlist" title="Remove from playlist">${ic('close')}</button>`
+    : `<button class="card-act${inLater ? ' on' : ''}" data-act="later" aria-label="${inLater ? 'Remove from Watch later' : 'Save to Watch later'}" title="${inLater ? 'In Watch later' : 'Watch later'}">${ic(inLater ? 'check' : 'clock')}</button>`;
+  return `<article class="card" data-i="${i}">
+    <a class="card-link" href="#v-${i}" title="${esc(v.why)}">
+      <div class="thumb" style="--h:${v.hue}">${tileHTML(v)}<img class="ti" loading="lazy" decoding="async" alt="" src="${thumbUrl(v)}">${S.likes[v.vid] ? `<span class="badge left">Liked</span>` : ''}<span class="badge">${esc(v.ct)}</span></div>
+      <div class="card-body"><h3 class="card-title">${esc(v.title)}</h3><div class="card-ch">${esc(v.channel)}</div><div class="card-meta">${metaHTML(v)}</div></div>
+    </a>${act}</article>`;
+}
+function rowHTML(i, extra) {
+  const v = V[i];
+  const yr = v.fy === v.ly ? v.fy : `${v.fy}–${String(v.ly).slice(2)}`;
+  extra = extra || (v.recs ? `<b>${v.recs}</b> recs · ${yr}` : `cited ${v.mentions}× · ${yr}`);
+  return `<a class="row" href="#v-${i}"><div class="thumb" style="--h:${v.hue}">${tileHTML(v)}<img class="ti" loading="lazy" decoding="async" alt="" src="${thumbUrl(v)}"></div>
+    <div class="card-body" style="padding-top:0"><span class="card-title">${esc(v.title)}</span><span class="card-ch">${esc(v.channel)}</span><span class="card-meta">${extra}</span></div></a>`;
+}
+
+const PAGE = 24;
+const listState = {}; // key -> {count, scroll}
+let io = null;
+function mountGrid(el, items, key, mode) {
+  const st = listState[key] || (listState[key] = { count: PAGE, scroll: 0 });
+  let shown = 0;
+  const moreWrap = document.createElement('div');
+  moreWrap.className = 'more';
+  const add = n => {
+    const end = Math.min(items.length, shown + n);
+    el.insertAdjacentHTML('beforeend', items.slice(shown, end).map(i => cardHTML(i, mode)).join(''));
+    shown = end; st.count = Math.max(st.count, shown);
+    moreWrap.hidden = shown >= items.length;
+  };
+  moreWrap.innerHTML = `<button class="btn" type="button">Show more</button>`;
+  moreWrap.firstChild.addEventListener('click', () => add(PAGE));
+  el.after(moreWrap);
+  add(st.count);
+  if (io) io.disconnect();
+  if ('IntersectionObserver' in window) {
+    io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting) && shown < items.length) add(PAGE); }, { rootMargin: '900px 0px' });
+    io.observe(moreWrap);
+  }
+}
+const emptyHTML = (h, p) => `<div class="empty"><h3>${h}</h3><p>${p}</p></div>`;
+const head = (eyebrow, title, sub, right = '') => `<div class="view-head"><div>${eyebrow ? `<p class="eyebrow">${eyebrow}</p>` : ''}<h1 class="v-title">${title}</h1>${sub ? `<p class="v-sub">${sub}</p>` : ''}</div>${right}</div>`;
+const CREDIT = `<footer class="credit">Data: <a href="https://hackertube.org" target="_blank" rel="noopener">HackerTube</a> by Andrej Karpathy and the <a href="https://huggingface.co/datasets/open-index/hacker-news" target="_blank" rel="noopener">open-index/hacker-news</a> dataset, under the <a href="https://opendatacommons.org/licenses/by/1-0/" target="_blank" rel="noopener">ODC-By 1.0</a> license. Hacker News data is provided by Y Combinator; comments belong to their authors. Video titles and channel names belong to their creators, and videos are hosted by YouTube. Not affiliated with YouTube, Google, Hacker News or Y Combinator.</footer>`;
+
+/* ---------- nav ---------- */
+function renderNav(active) {
+  active = active ?? (location.hash.slice(1) || 'home');
+  const cur = h => (active === h || (h === 'categories' && /^[ac]-/.test(active)) || (h === 'playlists' && active.startsWith('p-'))) ? ' aria-current="page"' : '';
+  const n = x => x ? `<span class="n">${fmt(x)}</span>` : '';
+  const areas = D ? D.areas.map((a, ai) => `<a class="sub" href="#a-${a.id}" style="--h:${(ai * 360 / D.areas.length + 18) % 360}"${active === 'a-' + a.id ? ' aria-current="page"' : ''}><span class="dot"></span>${esc(AREA_SHORT[a.id] || a.name)}</a>`).join('') : '';
+  const pls = S.playlists.map(p => `<a class="sub" href="#p-${p.id}"${active === 'p-' + p.id ? ' aria-current="page"' : ''}>${esc(p.name)}${n(p.items.length)}</a>`).join('');
+  $('#nav').innerHTML = `
+    <a href="#home"${cur('home')}>${ic('home')}For you</a>
+    <a href="#browse"${cur('browse')}>${ic('browse')}Browse</a>
+    <a href="#categories"${cur('categories')}>${ic('cats')}Categories</a>
+    ${areas}
+    <h4>Your library</h4>
+    <a href="#liked"${cur('liked')}>${ic('like')}Liked${n(Object.keys(S.likes).length)}</a>
+    <a href="#later"${cur('later')}>${ic('clock')}Watch later${n(S.later.length)}</a>
+    <a href="#history"${cur('history')}>${ic('history')}History${n(S.history.length)}</a>
+    <a href="#playlists"${cur('playlists')}>${ic('playlist')}Playlists${n(S.playlists.length)}</a>
+    ${pls}
+    <h4>More</h4>
+    <a href="#prefs"${cur('prefs')}>${ic('prefs')}Preferences</a>
+    <a href="#about"${cur('about')}>${ic('info')}About &amp; shortcuts</a>
+    <p class="rail-foot">Built on the <a href="https://hackertube.org" target="_blank" rel="noopener">HackerTube</a> data pack (ODC-By). Your likes and history stay in this browser.</p>`;
+}
+
+/* ---------- views ---------- */
+const main = $('#main');
+let homeArea = -1;
+const VIEWS = {
+  async home() {
+    const fy = await forYou(homeArea);
+    const areaChips = `<div class="chips" role="group" aria-label="Filter by area"><button class="chip" data-area="-1" aria-pressed="${homeArea < 0}">All</button>${D.areas.map((a, ai) => `<button class="chip" data-area="${ai}" aria-pressed="${homeArea === ai}">${esc(AREA_SHORT[a.id] || a.name)}</button>`).join('')}</div>`;
+    const sub = fy.tuned
+      ? `Tuned to ${fy.nPos} videos you liked, saved or watched in this browser. Videos you've already opened are left out.`
+      : `A score-weighted mix of what HN recommends most. Like, save or watch a few and this feed starts following your taste. Nothing leaves this browser.`;
+    main.innerHTML = head(fy.tuned ? 'Your feed' : 'Start here', 'For you', sub, `<button class="btn" id="shuffle">${ic('shuffle')}Shuffle <kbd>s</kbd></button>`) + areaChips + `<div class="grid" id="grid"></div>` + CREDIT;
+    $$('[data-area]', main).forEach(b => b.addEventListener('click', () => { homeArea = +b.dataset.area; render(); }));
+    $('#shuffle').addEventListener('click', shuffle);
+    if (!fy.items.length) $('#grid').outerHTML = emptyHTML('Nothing left here', 'You have opened every video in this area. Try another area or change what is shown in Preferences.');
+    else mountGrid($('#grid'), fy.items, 'home' + homeArea);
+  },
+  browse() {
+    main.innerHTML = head('All videos', 'Browse', `Every video HN kept recommending, filtered and sorted your way. The score counts the distinct months HN recommended a video, with strong recommendations counting extra.`) + filterBar() + `<div class="grid" id="grid"></div>` + CREDIT;
+    bindFilters(); drawFiltered(V, 'browse');
+  },
+  categories() {
+    const html = D.areas.map((a, ai) => {
+      const h = (ai * 360 / D.areas.length + 18) % 360;
+      const cats = D.categories.map((c, ci) => ({ c, ci })).filter(x => x.c.area === ai);
+      return `<section style="--h:${h}"><div class="area-h"><a href="#a-${a.id}">${esc(a.name)}</a><span class="n">${fmt(D.areaCount[ai])} videos</span></div>
+        <div class="cats">${cats.map(({ c, ci }) => `<a class="cat" href="#c-${c.id}" style="--h:${h}"><b>${esc(c.name)}<span class="n">${fmt(D.catCount[ci])}</span></b><span>${esc(c.desc.replace(/^[^:]+:\s*/, ''))}</span></a>`).join('')}</div></section>`;
+    }).join('');
+    main.innerHTML = head('16 areas · 150 categories', 'Categories', 'Each video sits in one to three categories, best fit first.') + `<div class="areas">${html}</div>` + CREDIT;
+  },
+  area(id) {
+    const ai = D.areas.findIndex(a => a.id === id);
+    if (ai < 0) return notFound();
+    const a = D.areas[ai], h = (ai * 360 / D.areas.length + 18) % 360;
+    const cats = D.categories.map((c, ci) => ({ c, ci })).filter(x => x.c.area === ai);
+    main.innerHTML = head('Area', esc(a.name), `${fmt(D.areaCount[ai])} videos across ${cats.length} categories.`)
+      + `<div class="chips">${cats.map(({ c, ci }) => `<a class="chip" href="#c-${c.id}" style="--h:${h}">${esc(c.name)}<span class="n">${D.catCount[ci]}</span></a>`).join('')}</div>`
+      + filterBar() + `<div class="grid" id="grid"></div>` + CREDIT;
+    bindFilters(); drawFiltered(V.filter(v => v.cats.some(c => D.categories[c].area === ai)), 'a-' + id);
+  },
+  cat(id) {
+    const ci = D.categories.findIndex(c => c.id === id);
+    if (ci < 0) return notFound();
+    const c = D.categories[ci], a = D.areas[c.area];
+    main.innerHTML = head(`<a href="#a-${a.id}" style="color:inherit">${esc(a.name)}</a>`, esc(c.name), esc(c.desc.replace(/^[^:]+:\s*/, ''))) + filterBar() + `<div class="grid" id="grid"></div>` + CREDIT;
+    bindFilters(); drawFiltered(V.filter(v => v.cats.includes(ci)), 'c-' + id);
+  },
+  search() {
+    const q = $('#q').value.trim();
+    if (!q) { main.innerHTML = head('Search', 'Search', 'Type in the box above: a speaker, a topic, a channel, a language.') + CREDIT; return; }
+    const r = search(q);
+    const cats = r.cats.length ? `<div class="chips wrap">${r.cats.map(({ c, ci }) => `<a class="chip" href="#c-${c.id}">${ic('cats')}${esc(c.name)}<span class="n">${D.catCount[ci]}</span></a>`).join('')}</div>` : '';
+    main.innerHTML = head('Search', `“${esc(q)}”`, `${fmt(r.items.length)} video${r.items.length === 1 ? '' : 's'} match, best first.`) + cats + `<div class="grid" id="grid"></div>` + CREDIT;
+    if (!r.items.length) $('#grid').outerHTML = emptyHTML('No matches', 'Try fewer words, or check Preferences: news and cited-only videos are hidden by default.');
+    else mountGrid($('#grid'), r.items, 'search:' + q);
+  },
+  async watch(i) {
+    const v = V[i];
+    if (!v) return notFound();
+    addHistory(v.vid, 0);
+    document.title = `${v.title} · HN Screening Room`;
+    const yt = `https://www.youtube.com/watch?v=${v.vid}`;
+    const span = v.fy === v.ly ? v.fy : `${v.fy}–${v.ly}`;
+    const catTags = v.cats.map(c => `<a class="tag" href="#c-${D.categories[c].id}">${esc(D.categories[c].name)}</a>`).join('');
+    const quote = v.quote ? `<blockquote class="pull">“${esc(v.quote)}”<cite>— HN comment, ${v.qy || ''} · <a href="https://news.ycombinator.com/item?id=${v.qid}" target="_blank" rel="noopener">read it on HN</a></cite></blockquote>` : '';
+    main.innerHTML = `<div class="watch">
+      <div class="watch-main" style="min-width:0">
+        <div class="player" id="player" style="--h:${v.hue}">${posterHTML(v)}</div>
+        <div class="note" id="embedNote" hidden>This view can't embed YouTube's player, so Play opens the video on YouTube in a new tab. Run the site from your own computer or server to watch it here.</div>
+        <h1 class="w-title">${esc(v.title)}</h1>
+        <div class="w-line"><span class="ch">${esc(v.channel)}</span><span class="tag">${esc(v.ct)}</span>${v.lv !== 'general' ? `<span class="tag">${esc(v.lv)}</span>` : ''}${v.sl !== 'evergreen' ? `<span class="tag">${esc(v.sl)}</span>` : ''}</div>
+        <div class="w-actions" id="actions"></div>
+        <section class="notes" aria-label="Why HN recommends it">
+          <div class="stats">
+            <div class="stat"><b>${v.recs}</b><span>people recommended it</span></div>
+            <div class="stat"><b>${v.months}</b><span>different months</span></div>
+            <div class="stat"><b>${v.strong}</b><span>strong recommendations</span></div>
+            <div class="stat"><b>${span}</b><span>on HN</span></div>
+            <div class="stat"><b>${v.score}</b><span>score</span></div>
+          </div>
+          <div id="stanceBar"></div>
+          <p class="summary">${esc(v.summary)}</p>
+          <p class="why"><b>Why HN points people to it.</b> ${esc(v.why)}</p>
+          ${quote}
+          <div class="tags-row">${catTags}${v.tags.slice(0, 6).map(t => `<span class="tag" style="text-transform:none;letter-spacing:0">${esc(t)}</span>`).join('')}</div>
+        </section>
+        <div class="cm-head"><h2>On Hacker News</h2><div class="chips" style="margin:0;padding:0" id="cmTabs"></div></div>
+        <div class="cm-list" id="cms"><div class="note">Loading comments…</div></div>
+      </div>
+      <aside class="side" id="side"><section><h3>Up next</h3><div class="list" id="upnext"></div></section></aside>
+    </div>` + CREDIT;
+    drawActions(v);
+    $('#player').addEventListener('click', e => onPlay(e, v));
+    if (ENV.thumbs === false || !ENV.embed) $('#embedNote').hidden = false;
+    window.scrollTo(0, 0);
+    const [cms, g] = await Promise.all([loadComments(i), loadGraph()]);
+    if (V[i] !== curWatch()) return; // navigated away
+    drawComments(v, cms);
+    const seen = seenSet();
+    const sim = g.similar[i].filter(j => j !== i && visible(V[j])).slice(0, 12);
+    const rel = (g.related[i] || []).filter(([j]) => j !== i && visible(V[j])).slice(0, 10);
+    upNext = sim.filter(j => !seen.has(V[j].vid)).concat(sim.filter(j => seen.has(V[j].vid)));
+    $('#upnext').innerHTML = upNext.length ? upNext.map(j => rowHTML(j)).join('') : `<p class="v-sub">No close matches.</p>`;
+    if (rel.length) $('#side').insertAdjacentHTML('beforeend', `<section><h3>Same people also recommended</h3><p>Other videos recommended by the HN commenters who recommended this one.</p><div class="list">${rel.map(([j, n]) => rowHTML(j, `<b>${n}</b> shared recommender${n === 1 ? '' : 's'}`)).join('')}</div></section>`);
+  },
+  liked() {
+    const items = Object.entries(S.likes).sort((a, b) => b[1] - a[1]).map(([vid]) => VID.get(vid)).filter(Boolean).map(v => v.i);
+    main.innerHTML = head('Your library', 'Liked', 'Likes teach the For you feed what to show next.') + `<div class="grid" id="grid"></div>` + CREDIT;
+    if (!items.length) $('#grid').outerHTML = emptyHTML('No likes yet', 'Open a video and press Like, or press <kbd>l</kbd> on a highlighted card.');
+    else mountGrid($('#grid'), items, 'liked');
+  },
+  later() {
+    const items = S.later.map(vid => VID.get(vid)).filter(Boolean).map(v => v.i);
+    main.innerHTML = head('Your library', 'Watch later', 'Saved for when you have the time. Newest first.', items.length ? `<button class="btn" id="clearWatched">Remove watched</button>` : '') + `<div class="grid" id="grid"></div>` + CREDIT;
+    if (!items.length) $('#grid').outerHTML = emptyHTML('Nothing saved', 'Use the clock button on any card, or press <kbd>w</kbd>.');
+    else {
+      mountGrid($('#grid'), items, 'later');
+      $('#clearWatched').addEventListener('click', () => {
+        const played = new Set(S.history.filter(h => h.p).map(h => h.v));
+        const before = S.later.length; S.later = S.later.filter(v => !played.has(v)); save('later');
+        toast(`Removed ${before - S.later.length} watched video${before - S.later.length === 1 ? '' : 's'}`); render();
+      });
+    }
+  },
+  history() {
+    main.innerHTML = head('Your library', 'History', 'Videos you opened in this browser. Played ones count most toward For you.', S.history.length ? `<div><button class="btn" id="clearHist">Clear history</button><div id="histConfirm"></div></div>` : '') + `<div id="hist"></div>` + CREDIT;
+    if (!S.history.length) { $('#hist').innerHTML = emptyHTML('No history yet', 'Videos you open show up here.'); return; }
+    const groups = new Map(), today = new Date(); today.setHours(0, 0, 0, 0);
+    for (const h of S.history.slice(0, 240)) {
+      const v = VID.get(h.v); if (!v) continue;
+      const d = new Date(h.t); d.setHours(0, 0, 0, 0);
+      const diff = Math.round((today - d) / 864e5);
+      const label = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' });
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(v.i);
+    }
+    $('#hist').innerHTML = [...groups].map(([label, items]) => `<h2 class="group-h">${label}</h2><div class="grid">${items.map(i => cardHTML(i)).join('')}</div>`).join('');
+    $('#clearHist').addEventListener('click', () => confirmIn($('#histConfirm'), 'Clear all history? For you will forget what you watched.', 'Clear history', () => { S.history = []; save('history'); renderNav(); render(); toast('History cleared'); }));
+  },
+  playlists() {
+    main.innerHTML = head('Your library', 'Playlists', 'Group videos into your own programmes.') +
+      `<form class="pl-new" id="plForm"><label class="sr" for="plName">Playlist name</label><input class="input" id="plName" placeholder="New playlist name" maxlength="60" style="flex:1 1 220px;max-width:340px"><button class="btn primary">${ic('plus')}Create</button></form><div class="pl-grid" id="pls"></div>` + CREDIT;
+    $('#plForm').addEventListener('submit', e => { e.preventDefault(); const n = $('#plName').value.trim(); if (!n) return; createPlaylist(n); render(); });
+    if (!S.playlists.length) { $('#pls').outerHTML = emptyHTML('No playlists yet', 'Create one here, or use Save on any video page.'); return; }
+    $('#pls').innerHTML = S.playlists.map(p => {
+      const first = p.items.map(x => VID.get(x)).find(Boolean);
+      return `<article class="card"><a class="card-link" href="#p-${p.id}"><div class="thumb" style="--h:${first ? first.hue : 210}">${first ? tileHTML(first) + `<img class="ti" loading="lazy" alt="" src="${thumbUrl(first)}">` : `<div class="tile"><span class="t-kind">playlist</span><span class="t-topic">${esc(p.name)}</span><span></span></div>`}<span class="badge">${p.items.length} video${p.items.length === 1 ? '' : 's'}</span></div><div class="card-body"><h3 class="card-title">${esc(p.name)}</h3><div class="card-meta">updated ${new Date(p.t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div></div></a></article>`;
+    }).join('');
+  },
+  playlist(id) {
+    const p = S.playlists.find(x => String(x.id) === id);
+    if (!p) return notFound();
+    const items = p.items.map(vid => VID.get(vid)).filter(Boolean).map(v => v.i);
+    main.innerHTML = `<div class="view-head"><div><p class="eyebrow">Playlist · ${items.length} video${items.length === 1 ? '' : 's'}</p>
+      <label class="sr" for="plRename">Playlist name</label><input class="input" id="plRename" value="${esc(p.name)}" maxlength="60" style="font:800 var(--t-2xl)/1 var(--f-display);text-transform:uppercase;height:auto;padding:4px 8px;margin-left:-9px;border-color:transparent;background:transparent;width:100%;max-width:640px"></div>
+      <div><button class="btn danger" id="plDel">Delete playlist</button><div id="plConfirm"></div></div></div><div class="grid" id="grid"></div>` + CREDIT;
+    $('#plRename').addEventListener('change', e => { const n = e.target.value.trim(); if (n) { p.name = n; p.t = Date.now(); save('playlists'); renderNav(); toast('Renamed'); } });
+    $('#plDel').addEventListener('click', () => confirmIn($('#plConfirm'), `Delete “${esc(p.name)}”? The videos stay in the catalog.`, 'Delete', () => { S.playlists = S.playlists.filter(x => x !== p); save('playlists'); location.hash = 'playlists'; toast('Playlist deleted'); }));
+    if (!items.length) $('#grid').outerHTML = emptyHTML('Empty playlist', 'Open a video and use Save to add it here.');
+    else mountGrid($('#grid'), items, 'p-' + id, 'pl:' + p.id);
+  },
+  prefs() {
+    const pr = S.prefs;
+    const cnt = { news: V.filter(v => v.sl === 'news').length, cited: V.filter(v => v.recs === 0).length };
+    main.innerHTML = head('This browser', 'Preferences', store.ok() ? 'Saved in this browser only.' : 'This browser is blocking storage, so these settings last until you close the page.') + `
+      <section class="panel"><h2>What to show</h2><p>The data pack marks some videos as news that only mattered around one event, and some as only cited on HN, never recommended.</p>
+        <label class="opt"><input type="checkbox" id="pNews" ${pr.news ? 'checked' : ''}><div><b>Show news-only videos</b><span>${fmt(cnt.news)} videos tied to a single event.</span></div></label>
+        <label class="opt"><input type="checkbox" id="pCited" ${pr.cited ? 'checked' : ''}><div><b>Show videos HN only cited</b><span>${fmt(cnt.cited)} videos that were linked as references, jokes or criticism, but nobody recommended.</span></div></label>
+      </section>
+      <section class="panel"><h2>Thumbnails</h2><p>When YouTube images can't load, cards show the video's topic instead.</p>
+        <label class="opt"><input type="radio" name="thumb" value="mid" ${pr.thumb !== 'creator' ? 'checked' : ''}><div><b>Frame from the middle of the video</b><span>What HackerTube shows. Less clickbait, more of what the video actually looks like.</span></div></label>
+        <label class="opt"><input type="radio" name="thumb" value="creator" ${pr.thumb === 'creator' ? 'checked' : ''}><div><b>The uploader's thumbnail</b><span>The image the channel picked.</span></div></label>
+      </section>
+      <section class="panel"><h2>Theme</h2>
+        ${['system', 'light', 'dark'].map(t => `<label class="opt"><input type="radio" name="theme" value="${t}" ${pr.theme === t ? 'checked' : ''}><div><b>${t === 'system' ? 'Match my device' : t[0].toUpperCase() + t.slice(1)}</b></div></label>`).join('')}
+      </section>
+      <section class="panel"><h2>Your data</h2><p>Likes, Watch later, history, playlists and these preferences. Copy them to move to another browser, or keep a backup.</p>
+        <div class="btn-row"><button class="btn" id="exCopy">${ic('copy')}Copy my data</button>${canDownload() ? `<button class="btn" id="exDl">Download as file</button>` : ''}</div>
+        <label class="sr" for="imText">Paste exported data</label><textarea class="input" id="imText" placeholder="Paste exported data here to import it" style="margin-top:12px"></textarea>
+        <div class="btn-row"><button class="btn" id="imBtn">Import pasted data</button><label class="btn" for="imFile" style="cursor:pointer">Import from file</label><input type="file" id="imFile" accept="application/json,.json" class="sr"><button class="btn danger" id="resetBtn">Reset everything</button></div>
+        <div id="resetConfirm"></div>
+      </section>` + CREDIT;
+    const setPref = (k, val) => { S.prefs[k] = val; save('prefs'); sigVersion++; for (const k2 in listState) delete listState[k2]; };
+    $('#pNews').addEventListener('change', e => { setPref('news', e.target.checked); recount(); toast('Saved'); });
+    $('#pCited').addEventListener('change', e => { setPref('cited', e.target.checked); recount(); toast('Saved'); });
+    $$('input[name="thumb"]').forEach(r => r.addEventListener('change', e => { setPref('thumb', e.target.value); toast('Saved'); }));
+    $$('input[name="theme"]').forEach(r => r.addEventListener('change', e => { setPref('theme', e.target.value); applyTheme(); }));
+    $('#exCopy').addEventListener('click', () => copyText(JSON.stringify(exportData(), null, 1), 'Copied your data'));
+    if ($('#exDl')) $('#exDl').addEventListener('click', () => window.srDownload(`screening-room-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(exportData(), null, 1)));
+    $('#imBtn').addEventListener('click', () => importData($('#imText').value));
+    $('#imFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) f.text().then(importData); });
+    $('#resetBtn').addEventListener('click', () => confirmIn($('#resetConfirm'), 'Erase likes, Watch later, history, playlists and preferences in this browser?', 'Erase everything', () => {
+      S.likes = {}; S.dislikes = {}; S.later = []; S.history = []; S.playlists = [];
+      S.prefs = { thumb: 'mid', news: false, cited: false, theme: 'system' };
+      ['likes', 'dislikes', 'later', 'history', 'playlists', 'prefs'].forEach(save); applyTheme(); recount(); renderNav(); render(); toast('Everything erased');
+    }));
+  },
+  about() {
+    const keys = [['/', 'Search'], ['j', 'k', 'Next / previous card'], ['Enter', 'Open the highlighted card'], ['l', 'Like'], ['d', 'Not for me (hide it)'], ['w', 'Watch later'], ['p', 'Play (on a video page)'], ['n', 'Next video in Up next'], ['y', 'Open on YouTube'], ['s', 'Shuffle For you'], ['g', 'h', 'Go home (also g b, g c, g l, g w, g y)'], ['?', 'Show shortcuts'], ['Esc', 'Close, or leave the search box']];
+    main.innerHTML = head('About', 'HN Screening Room', `A personal take on Andrej Karpathy's HackerTube: ${fmt(V.length)} YouTube videos that Hacker News commenters kept recommending to each other between 2007 and 2026.`) + `
+      <div class="prose">
+        <h2>How a video gets in</h2>
+        <p>Every Hacker News comment from 2007 to 2026 was scanned for YouTube links. A mention counted only if the comment had at least 100 characters of its own text, and a video made the list only if at least 3 different people mentioned it in at least 3 different months. Claude then read each comment and labelled what the commenter was doing: a strong recommendation, a recommendation, a neutral citation, a joke, or criticism.</p>
+        <p>The ranking score is the number of distinct months HN recommended a video, plus half a point for each month with a strong recommendation. A video recommended steadily for a decade beats one that went viral for a week.</p>
+        <p>This copy merges ${V.reduce((n, v) => n + v.alts.length, 0)} duplicate uploads of the same talk, hides news-only and cited-only videos by default, and adds a For you feed that learns from your likes, saves and plays using the data pack's topic embeddings. It all runs in your browser, with no account.</p>
+        <h2>Keyboard shortcuts</h2>
+        <dl class="keys">${keys.map(k => `<dt>${k.slice(0, -1).map(x => `<kbd>${x}</kbd>`).join('')}</dt><dd>${k[k.length - 1]}</dd>`).join('')}</dl>
+        <h2>Use the data</h2>
+        <p>The files behind this page are plain JSON, ready for your own interface, newsletter or agent. Field names are listed inside <code>catalog.json</code>.</p>
+        <div class="tablewrap"><table class="files"><tbody>
+          <tr><td><a href="data/catalog.json" target="_blank" rel="noopener">data/catalog.json</a></td><td>${fmt(V.length)} videos with summaries, why HN likes them, categories, recommendation counts, plus the 16 areas and 150 categories.</td></tr>
+          <tr><td><a href="data/graph.json" target="_blank" rel="noopener">data/graph.json</a></td><td>For each video, the 16 most similar videos by topic embedding, and the videos recommended by the same people.</td></tr>
+          <tr><td>data/c/00.json … ${String(D.shards - 1).padStart(2, '0')}.json</td><td>${fmt(39834)} labelled HN comments, sharded by video index modulo ${D.shards}.</td></tr>
+          <tr><td>data/emb.txt</td><td>384-dimensional topic embeddings used by For you: base64 of an int8 matrix, one row per video in catalog order.</td></tr>
+        </tbody></table></div>
+        <p>The original data pack, with its full field guide, comes from <a href="https://hackertube.org" target="_blank" rel="noopener">hackertube.org</a>. Video durations, view counts and upload dates aren't included because YouTube's API terms don't allow redistributing them; a free YouTube Data API key can add them.</p>
+      </div>` + CREDIT;
+  },
+};
+function notFound() { main.innerHTML = emptyHTML('That page isn\'t here', 'The link may be from an older version. <a href="#home">Go to For you</a>.') + CREDIT; }
+
+/* ---------- filters ---------- */
+function filterBar() {
+  return `<div class="chips" role="group" aria-label="Content type">${Object.keys(CT_LABEL).map(t => `<button class="chip" data-ct="${t}" aria-pressed="${F.types.has(t)}">${CT_LABEL[t]}</button>`).join('')}</div>
+  <div class="filters">
+    <label for="fSort">Sort <select id="fSort">${Object.entries(SORTS).map(([k, s]) => `<option value="${k}"${F.sort === k ? ' selected' : ''}>${s.label}</option>`).join('')}</select></label>
+    <label for="fLv">Level <select id="fLv"><option value="">Any level</option>${Object.entries(LV_LABEL).map(([k, l]) => `<option value="${k}"${F.lv === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+    <label for="fEra">First recommended <select id="fEra">${Object.entries(ERAS).map(([k, l]) => `<option value="${k}"${F.era === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+    <span class="count" id="fCount"></span>
+  </div>`;
+}
+let filterSource = null;
+function bindFilters() {
+  $$('[data-ct]', main).forEach(b => b.addEventListener('click', () => {
+    const t = b.dataset.ct; F.types.has(t) ? F.types.delete(t) : F.types.add(t);
+    b.setAttribute('aria-pressed', F.types.has(t)); redrawFiltered();
+  }));
+  $('#fSort').addEventListener('change', e => { F.sort = e.target.value; redrawFiltered(); });
+  $('#fLv').addEventListener('change', e => { F.lv = e.target.value; redrawFiltered(); });
+  $('#fEra').addEventListener('change', e => { F.era = e.target.value; redrawFiltered(); });
+}
+function drawFiltered(src, key) {
+  filterSource = { src, key };
+  const items = applyFilters(src);
+  $('#fCount').textContent = `${fmt(items.length)} video${items.length === 1 ? '' : 's'}`;
+  const grid = $('#grid');
+  grid.innerHTML = '';
+  const nx = grid.nextElementSibling; if (nx && nx.classList.contains('more')) nx.remove();
+  if (!items.length) { grid.innerHTML = `<div style="grid-column:1/-1">${emptyHTML('No videos match', 'Loosen a filter, or turn on news and cited-only videos in Preferences.')}</div>`; return; }
+  mountGrid(grid, items.map(v => v.i), key + '|' + [...F.types].join() + F.lv + F.era + F.sort);
+}
+function redrawFiltered() { if (filterSource) drawFiltered(filterSource.src, filterSource.key); }
+
+/* ---------- watch page parts ---------- */
+let upNext = [];
+const curWatch = () => { const m = /^v-(\d+)$/.exec(location.hash.slice(1)); return m ? V[+m[1]] : null; };
+function posterHTML(v) {
+  const label = (ENV.thumbs === false || !ENV.embed) ? 'Opens on YouTube' : 'Play';
+  return `<a class="poster" id="poster" href="https://www.youtube.com/watch?v=${v.vid}" target="_blank" rel="noopener" aria-label="Play ${esc(v.title)}">${tileHTML(v)}<img class="ti" alt="" src="https://i.ytimg.com/vi/${v.vid}/${S.prefs.thumb === 'creator' ? 'hqdefault' : 'hq2'}.jpg"><span class="play">${ic('play')}</span><span class="play-label">${label}</span></a>`;
+}
+function onPlay(e, v) {
+  const poster = e.target.closest('#poster');
+  if (!poster) return;
+  addHistory(v.vid, 1); sigVersion++;
+  if (ENV.thumbs === false || !ENV.embed) return; // let the link open YouTube
+  e.preventDefault();
+  $('#player').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.vid}?autoplay=1&rel=0" title="${esc(v.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+}
+function onEmbedBlocked() {
+  const v = curWatch(); const p = $('#player');
+  if (v && p) { p.innerHTML = posterHTML(v); const n = $('#embedNote'); if (n) n.hidden = false; }
+}
+function drawActions(v) {
+  const liked = !!S.likes[v.vid], dis = !!S.dislikes[v.vid], later = S.later.includes(v.vid);
+  const inPl = S.playlists.some(p => p.items.includes(v.vid));
+  $('#actions').innerHTML = `
+    <button class="btn" data-a="like" aria-pressed="${liked}">${ic('like')}${liked ? 'Liked' : 'Like'}</button>
+    <button class="btn" data-a="dislike" aria-pressed="${dis}">${ic('dislike')}Not for me</button>
+    <button class="btn" data-a="later" aria-pressed="${later}">${ic(later ? 'check' : 'clock')}Watch later</button>
+    <button class="btn" data-a="save" aria-pressed="${inPl}">${ic('save')}Save</button>
+    <a class="btn" href="https://www.youtube.com/watch?v=${v.vid}" target="_blank" rel="noopener" data-a="yt">${ic('ext')}YouTube</a>
+    <button class="btn" data-a="copy">${ic('copy')}Copy link</button>`;
+  $$('[data-a]', $('#actions')).forEach(b => b.addEventListener('click', () => {
+    const a = b.dataset.a;
+    if (a === 'like') toggleLike(v);
+    else if (a === 'dislike') toggleDislike(v);
+    else if (a === 'later') toggleLater(v);
+    else if (a === 'save') openSaveModal(v);
+    else if (a === 'copy') copyText(`https://www.youtube.com/watch?v=${v.vid}`, 'YouTube link copied');
+    else if (a === 'yt') addHistory(v.vid, 1);
+    if (a !== 'yt' && a !== 'copy' && a !== 'save') drawActions(v);
+  }));
+}
+function drawComments(v, cms) {
+  const counts = {}; cms.forEach(c => counts[c.stance] = (counts[c.stance] || 0) + 1);
+  const total = cms.length || 1;
+  $('#stanceBar').innerHTML = cms.length ? `<div class="stance-bar" role="img" aria-label="How HN mentioned it">${D.stances.filter(s => counts[s]).map(s => `<i class="st-${s}" style="width:${counts[s] / total * 100}%"></i>`).join('')}</div>
+    <div class="legend" style="margin-top:8px">${D.stances.filter(s => counts[s]).map(s => `<span><i class="st-${s}"></i>${STANCE_LABEL[s]} ${counts[s]}</span>`).join('')}</div>` : '';
+  const recs = cms.filter(c => c.stance === 'rec' || c.stance === 'strong_rec');
+  let tab = recs.length ? 'recs' : 'all';
+  const tabs = $('#cmTabs');
+  const drawTabs = () => {
+    tabs.innerHTML = `<button class="chip" data-t="recs" aria-pressed="${tab === 'recs'}">Recommendations <span class="n">${recs.length}</span></button><button class="chip" data-t="all" aria-pressed="${tab === 'all'}">All mentions <span class="n">${cms.length}</span></button>`;
+    $$('[data-t]', tabs).forEach(b => b.addEventListener('click', () => { tab = b.dataset.t; drawTabs(); drawList(); }));
+  };
+  const drawList = () => {
+    const list = tab === 'recs' ? recs : cms;
+    $('#cms').innerHTML = list.length ? list.map(commentHTML).join('') : `<div class="note">No comments in this view.</div>`;
+    $$('.cm-text', $('#cms')).forEach(t => {
+      if (t.scrollHeight > t.clientHeight + 4) {
+        const b = document.createElement('button'); b.className = 'linkish'; b.textContent = 'Read more';
+        b.addEventListener('click', () => { const open = t.classList.toggle('clamp'); b.textContent = open ? 'Read more' : 'Show less'; });
+        t.after(b);
+      }
+    });
+  };
+  drawTabs(); drawList();
+}
+function commentHTML(c) {
+  let t = esc(c.text);
+  if (c.quote) {
+    const q = esc(c.quote), at = t.indexOf(q);
+    if (at >= 0) t = t.slice(0, at) + '<mark>' + q + '</mark>' + t.slice(at + q.length);
+  }
+  t = t.replace(/\[VIDEO\]/g, '<span class="tok v">▶ this video</span>').replace(/\[LINK\]/g, '<span class="tok">link</span>');
+  return `<article class="cm"><div class="cm-top"><span class="au">${esc(c.author)}</span><span class="mo">${esc(c.month)}</span><span class="st"><i class="st-${c.stance}"></i>${STANCE_LABEL[c.stance]}</span>
+    <a class="hn" href="https://news.ycombinator.com/item?id=${c.id}" target="_blank" rel="noopener">View on HN ${ic('ext')}</a></div>
+    ${c.story ? `<div class="cm-story">In the thread “${esc(c.story)}”</div>` : ''}<div class="cm-text clamp">${t}</div></article>`;
+}
+
+/* ---------- library actions ---------- */
+function toggleLike(v) {
+  if (S.likes[v.vid]) { delete S.likes[v.vid]; toast('Removed from Liked'); }
+  else { S.likes[v.vid] = Date.now(); delete S.dislikes[v.vid]; save('dislikes'); toast('Liked. For you will show more like this.'); }
+  save('likes'); renderNav();
+}
+function toggleDislike(v) {
+  if (S.dislikes[v.vid]) { delete S.dislikes[v.vid]; toast('Back in your feeds'); }
+  else {
+    S.dislikes[v.vid] = Date.now(); delete S.likes[v.vid]; save('likes');
+    toast('Hidden. For you will show less like this.', () => { delete S.dislikes[v.vid]; save('dislikes'); render(); });
+  }
+  save('dislikes'); renderNav();
+}
+function toggleLater(v) {
+  if (S.later.includes(v.vid)) { S.later = S.later.filter(x => x !== v.vid); toast('Removed from Watch later'); }
+  else { S.later.unshift(v.vid); toast('Saved to Watch later', () => { S.later = S.later.filter(x => x !== v.vid); save('later'); renderNav(); refreshCards(); }); }
+  save('later'); renderNav();
+}
+function createPlaylist(name, firstVid) {
+  const p = { id: Date.now() % 1e9, name, items: firstVid ? [firstVid] : [], t: Date.now() };
+  S.playlists.push(p); save('playlists'); renderNav(); toast(`Created “${name}”`);
+  return p;
+}
+function openSaveModal(v) {
+  const body = () => `<div class="modal-h"><h2>Save to…</h2><button class="icon-btn" data-close aria-label="Close">${ic('close')}</button></div>
+    <label class="opt"><input type="checkbox" data-pl="later" ${S.later.includes(v.vid) ? 'checked' : ''}><div><b>Watch later</b></div></label>
+    ${S.playlists.map(p => `<label class="opt"><input type="checkbox" data-pl="${p.id}" ${p.items.includes(v.vid) ? 'checked' : ''}><div><b>${esc(p.name)}</b><span>${p.items.length} video${p.items.length === 1 ? '' : 's'}</span></div></label>`).join('')}
+    <form class="pl-new" id="mNew" style="margin:12px 0 0"><label class="sr" for="mName">New playlist name</label><input class="input" id="mName" placeholder="New playlist" maxlength="60" style="flex:1"><button class="btn primary">${ic('plus')}Create</button></form>`;
+  const m = openModal(body());
+  const bind = () => {
+    $$('[data-pl]', m).forEach(cb => cb.addEventListener('change', () => {
+      if (cb.dataset.pl === 'later') { toggleLater(v); }
+      else {
+        const p = S.playlists.find(x => String(x.id) === cb.dataset.pl);
+        p.items = cb.checked ? [v.vid, ...p.items.filter(x => x !== v.vid)] : p.items.filter(x => x !== v.vid);
+        p.t = Date.now(); save('playlists'); renderNav(); toast(cb.checked ? `Added to “${p.name}”` : `Removed from “${p.name}”`);
+      }
+      if ($('#actions')) drawActions(v);
+    }));
+    $('#mNew', m).addEventListener('submit', e => { e.preventDefault(); const n = $('#mName', m).value.trim(); if (!n) return; createPlaylist(n, v.vid); m.innerHTML = body(); bind(); if ($('#actions')) drawActions(v); });
+    $('[data-close]', m).addEventListener('click', closeModal);
+  };
+  bind();
+}
+
+/* ---------- overlays & feedback ---------- */
+let modalEl = null, lastFocus = null;
+function openModal(html) {
+  closeModal();
+  lastFocus = document.activeElement;
+  modalEl = document.createElement('div');
+  modalEl.className = 'modal-wrap';
+  modalEl.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
+  modalEl.addEventListener('click', e => { if (e.target === modalEl) closeModal(); });
+  document.body.appendChild(modalEl);
+  const f = $('input, button', modalEl); if (f) f.focus();
+  return $('.modal', modalEl);
+}
+function closeModal() { if (modalEl) { modalEl.remove(); modalEl = null; if (lastFocus && lastFocus.focus) lastFocus.focus(); } }
+function showKeys() {
+  const keys = [['/', 'Search'], ['j k', 'Move between cards'], ['Enter', 'Open card'], ['l', 'Like'], ['d', 'Not for me'], ['w', 'Watch later'], ['p', 'Play'], ['n', 'Next in Up next'], ['y', 'Open on YouTube'], ['s', 'Shuffle For you'], ['g h', 'Home'], ['g b', 'Browse'], ['g c', 'Categories'], ['g l', 'Liked'], ['g w', 'Watch later'], ['g y', 'History'], ['Esc', 'Close']];
+  const m = openModal(`<div class="modal-h"><h2>Keyboard shortcuts</h2><button class="icon-btn" data-close aria-label="Close">${ic('close')}</button></div>
+    <dl class="keys">${keys.map(([k, d]) => `<dt>${k.split(' ').map(x => `<kbd>${x}</kbd>`).join('')}</dt><dd>${d}</dd>`).join('')}</dl>`);
+  $('[data-close]', m).addEventListener('click', closeModal);
+}
+function toast(msg, undo) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `<span>${esc(msg)}</span>${undo ? '<button type="button">Undo</button>' : ''}`;
+  if (undo) t.querySelector('button').addEventListener('click', () => { undo(); t.remove(); if ($('#actions') && curWatch()) drawActions(curWatch()); });
+  $('#toasts').appendChild(t);
+  setTimeout(() => t.remove(), undo ? 6000 : 2600);
+  while ($('#toasts').children.length > 3) $('#toasts').firstChild.remove();
+}
+function confirmIn(el, msg, okLabel, fn) {
+  el.innerHTML = `<div class="confirm"><span>${msg}</span><button class="btn danger" type="button" data-ok>${okLabel}</button><button class="btn" type="button" data-no>Cancel</button></div>`;
+  $('[data-ok]', el).addEventListener('click', () => { el.innerHTML = ''; fn(); });
+  $('[data-no]', el).addEventListener('click', () => { el.innerHTML = ''; });
+}
+function copyText(text, okMsg) {
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.className = 'input'; ta.style.cssText = 'position:fixed;left:16px;right:16px;bottom:80px;width:auto;height:120px;z-index:70';
+    document.body.appendChild(ta); ta.select(); toast('Press Ctrl+C or ⌘C to copy, then click anywhere');
+    const done = () => { ta.remove(); document.removeEventListener('pointerdown', done); };
+    setTimeout(() => document.addEventListener('pointerdown', done), 50);
+  };
+  try { navigator.clipboard.writeText(text).then(() => toast(okMsg), fallback); } catch (e) { fallback(); }
+}
+function canDownload() { return typeof window.srDownload === 'function' && ENV.thumbs === true; }
+function exportData() {
+  return { app: 'hn-screening-room', version: 1, exported: new Date().toISOString(), likes: S.likes, dislikes: S.dislikes, later: S.later, history: S.history, playlists: S.playlists, prefs: S.prefs };
+}
+function importData(text) {
+  let d;
+  try { d = JSON.parse(text); } catch (e) { toast('That isn\'t valid exported data. Paste the whole text you copied.'); return; }
+  if (!d || d.app !== 'hn-screening-room') { toast('That data didn\'t come from HN Screening Room.'); return; }
+  S.likes = Object.assign({}, S.likes, d.likes || {});
+  S.dislikes = Object.assign({}, S.dislikes, d.dislikes || {});
+  S.later = [...new Set([...(d.later || []), ...S.later])];
+  const hv = new Map(); [...(d.history || []), ...S.history].forEach(h => { if (!hv.has(h.v) || hv.get(h.v).t < h.t) hv.set(h.v, h); });
+  S.history = [...hv.values()].sort((a, b) => b.t - a.t).slice(0, 600);
+  const ids = new Set(S.playlists.map(p => p.id)); (d.playlists || []).forEach(p => { if (!ids.has(p.id)) S.playlists.push(p); });
+  if (d.prefs) S.prefs = Object.assign(S.prefs, d.prefs);
+  ['likes', 'dislikes', 'later', 'history', 'playlists', 'prefs'].forEach(save); applyTheme(); recount(); renderNav(); render();
+  toast('Imported');
+}
+function recount() {
+  D.catCount.fill(0); D.areaCount.fill(0);
+  for (const v of V) { if (!visible(v, true)) continue; const sa = new Set(); for (const c of v.cats) { D.catCount[c]++; sa.add(D.categories[c].area); } sa.forEach(a => D.areaCount[a]++); }
+}
+function refreshCards() {
+  $$('.card[data-i]').forEach(c => {
+    const v = V[+c.dataset.i], b = $('.card-act[data-act="later"]', c); if (!b) return;
+    const on = S.later.includes(v.vid);
+    b.classList.toggle('on', on); b.innerHTML = ic(on ? 'check' : 'clock'); b.setAttribute('aria-label', on ? 'Remove from Watch later' : 'Save to Watch later');
+  });
+}
+function shuffle() { seed = (Math.random() * 1e9) | 0; for (const k in listState) if (k.startsWith('home')) delete listState[k]; if ((location.hash.slice(1) || 'home') !== 'home') location.hash = 'home'; else render(); }
+
+/* card action clicks (event delegation) */
+document.addEventListener('click', e => {
+  const b = e.target.closest('.card-act'); if (!b) return;
+  e.preventDefault();
+  const v = V[+b.closest('.card').dataset.i];
+  if (b.dataset.act === 'later') { toggleLater(v); refreshCards(); }
+  else if (b.dataset.act === 'plremove') {
+    const p = S.playlists.find(x => String(x.id) === b.dataset.pl);
+    if (p) { p.items = p.items.filter(x => x !== v.vid); save('playlists'); renderNav(); b.closest('.card').remove(); toast(`Removed from “${p.name}”`); }
+  }
+});
+
+/* ---------- router ---------- */
+let scrollMem = {}, lastFilterRoute = null;
+let curKey = null;
+async function render() {
+  const h = location.hash.slice(1) || 'home';
+  if (curKey) scrollMem[curKey] = window.scrollY;
+  curKey = h;
+  document.title = 'HN Screening Room';
+  document.body.classList.remove('drawer'); $('#scrim').hidden = true;
+  kIdx = -1;
+  if (/^(browse|a-|c-)/.test(h) && h !== lastFilterRoute) { F.types.clear(); F.lv = ''; F.era = ''; F.sort = 'score'; lastFilterRoute = h; }
+  renderNav(h);
+  let m;
+  if (VIEWS[h] && !['area', 'cat', 'watch', 'playlist'].includes(h)) await VIEWS[h]();
+  else if ((m = /^v-(\d+)$/.exec(h))) return VIEWS.watch(+m[1]);
+  else if ((m = /^a-([a-z0-9-]+)$/.exec(h))) VIEWS.area(m[1]);
+  else if ((m = /^c-([a-z0-9-]+)$/.exec(h))) VIEWS.cat(m[1]);
+  else if ((m = /^p-(\d+)$/.exec(h))) VIEWS.playlist(m[1]);
+  else notFound();
+  requestAnimationFrame(() => window.scrollTo(0, scrollMem[h] || 0));
+}
+window.addEventListener('hashchange', render);
+
+/* ---------- search box ---------- */
+let qTimer = null;
+$('#q').addEventListener('input', () => {
+  clearTimeout(qTimer);
+  qTimer = setTimeout(() => { if (!D) return; delete listState['search:' + $('#q').value.trim()]; if (location.hash !== '#search') location.hash = 'search'; else render(); }, 180);
+});
+$('#searchForm').addEventListener('submit', e => { e.preventDefault(); $('#q').blur(); if (location.hash !== '#search') location.hash = 'search'; else render(); });
+
+/* ---------- drawer ---------- */
+$('#menuBtn').addEventListener('click', () => { document.body.classList.add('drawer'); $('#scrim').hidden = false; const a = $('#nav a'); if (a) a.focus(); });
+$('#scrim').addEventListener('click', () => { document.body.classList.remove('drawer'); $('#scrim').hidden = true; });
+$('#keysBtn').addEventListener('click', showKeys);
+
+/* ---------- keyboard ---------- */
+let kIdx = -1, gPending = 0;
+function focusCard(d) {
+  const cards = $$('main .card[data-i]');
+  if (!cards.length) return;
+  $$('.card.kfocus').forEach(c => c.classList.remove('kfocus'));
+  kIdx = Math.max(0, Math.min(cards.length - 1, kIdx + d));
+  const c = cards[kIdx]; c.classList.add('kfocus');
+  $('.card-link', c).focus({ preventScroll: true });
+  c.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+const targetVideo = () => { const c = document.activeElement && document.activeElement.closest && document.activeElement.closest('.card[data-i]'); return c ? V[+c.dataset.i] : curWatch(); };
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+  if (e.key === 'Escape') {
+    if (modalEl) return closeModal();
+    if (document.body.classList.contains('drawer')) { document.body.classList.remove('drawer'); $('#scrim').hidden = true; return; }
+    if (typing) return document.activeElement.blur();
+    return;
+  }
+  if (typing || modalEl || !D) return;
+  const k = e.key;
+  if (gPending && Date.now() - gPending < 1200) {
+    gPending = 0;
+    const map = { h: 'home', b: 'browse', c: 'categories', l: 'liked', w: 'later', y: 'history', p: 'playlists' };
+    if (map[k]) { e.preventDefault(); location.hash = map[k]; }
+    return;
+  }
+  if (k === '/') { e.preventDefault(); $('#q').focus(); $('#q').select(); }
+  else if (k === '?') { e.preventDefault(); showKeys(); }
+  else if (k === 'g') gPending = Date.now();
+  else if (k === 'j') { e.preventDefault(); focusCard(1); }
+  else if (k === 'k') { e.preventDefault(); focusCard(-1); }
+  else if (k === 's') shuffle();
+  else if (k === 'l' || k === 'd' || k === 'w') {
+    const v = targetVideo(); if (!v) return;
+    if (k === 'l') toggleLike(v); else if (k === 'd') toggleDislike(v); else { toggleLater(v); refreshCards(); }
+    if ($('#actions') && curWatch() === v) drawActions(v);
+  } else if (k === 'p') { const p = $('#poster'); if (p) p.click(); }
+  else if (k === 'n') { if (curWatch() && upNext.length) location.hash = 'v-' + upNext[0]; }
+  else if (k === 'y') { const v = targetVideo(); if (v) { addHistory(v.vid, 1); const a = document.createElement('a'); a.href = `https://www.youtube.com/watch?v=${v.vid}`; a.target = '_blank'; a.rel = 'noopener'; a.click(); } }
+});
+
+/* ---------- boot ---------- */
+$('#skel').innerHTML = Array.from({ length: 12 }, () => `<div class="card skel"><div class="thumb"></div><div class="bar"></div><div class="bar s"></div></div>`).join('');
+renderNav();
+const probe = new Image();
+probe.onload = () => { ENV.thumbs = probe.naturalWidth > 0; };
+probe.onerror = () => { ENV.thumbs = false; ENV.embed = false; const n = $('#embedNote'); if (n) n.hidden = false; const l = $('.play-label'); if (l) l.textContent = 'Opens on YouTube'; };
+probe.src = 'https://i.ytimg.com/vi/fNk_zzaMoSs/hq2.jpg';
+fetch('data/catalog.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(cat => {
+  hydrate(cat); render();
+}).catch(err => {
+  main.innerHTML = emptyHTML('The video catalog didn\'t load', `This page needs its <code>data</code> folder next to it, served over http. If you opened index.html by double-clicking, run the start script instead (see README). <br><small>${esc(String(err))}</small>`);
+});
+})();
+</script>
+
+</html>
